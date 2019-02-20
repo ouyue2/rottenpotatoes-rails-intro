@@ -12,9 +12,44 @@ class MoviesController < ApplicationController
 
   def index
     @all_ratings=Movie.uniq.order(:rating).pluck(:rating)
-    (@selected_ratings= params[:ratings] ? params[:ratings].keys : @all_ratings).each { |rating|  params[rating] = 1 }
-    @movies = Movie.where(:rating => @selected_ratings)
-    @movies = Movie.where(:rating => @selected_ratings).order(params[:sort]) if params[:sort]
+    @selected_sort=''
+    @selected_ratings= []
+    isredirect=false
+
+    if params[:sort]
+      @selected_sort = params[:sort]
+      session[:sort] = @selected_sort
+    elsif session[:sort]
+      @selected_sort = session[:sort]
+      isredirect = true
+    else
+      @selected_sort = nil
+    end
+    
+    if(params[:ratings])
+      params[:ratings].each {|key, value| @selected_ratings << key}
+      session[:ratings] = @selected_ratings
+    elsif session[:ratings]
+      @selected_ratings = session[:ratings]
+      isredirect = true
+    else
+      @selected_ratings = nil
+    end
+    @selected_ratings.each { |rating|  params[rating] = 1 }  if @selected_ratings
+    
+    if isredirect
+      redirect_to movies_path :ratings=>@selected_ratings, :sort=>@selected_sort
+    else
+      if @selected_ratings&&@selected_sort
+        @movies = Movie.where(:rating => @selected_ratings).order(@selected_sort)
+      elsif @selected_ratings
+        @movies = Movie.where(:rating => @selected_ratings)
+      elsif @selected_sort
+        @movies = Movie.order(@selected_sort)
+      else
+        @movies = Movie.all
+      end
+    end
   end
 
   def new
